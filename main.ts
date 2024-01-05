@@ -51,6 +51,9 @@ export default class MasterPlugin extends Plugin {
 				if (!codeMirror) {
 					return;
 				}
+				if (!codeMirror.state.vim.insertMode) {
+					this.switchToLayout(this.US_LAYOUT, false);
+				}
 				codeMirror.on('vim-mode-change', (modeObject: any) => {
 					if (modeObject) {
 						this.onVimModeChanged(modeObject);
