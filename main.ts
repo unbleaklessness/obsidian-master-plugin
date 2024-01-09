@@ -1,12 +1,34 @@
 import { Plugin, MarkdownView, ItemView } from 'obsidian';
+import * as os from 'os';
+
+enum Layout {
+	US,
+	RU,
+}
 
 export default class MasterPlugin extends Plugin {
 
-	readonly US_LAYOUT = 'us(qwerty)'
-	readonly RU_LAYOUT = 'ru'
-	originalLayout = this.US_LAYOUT
-	intervalID: any = null
-	registeredPaths: string[] = []
+	originalLayout = Layout.US;
+	intervalID: any = null;
+	registeredPaths: string[] = [];
+	isWindows = false;
+
+	private getLayoutString(layout: Layout): string {
+		if (layout === Layout.US) {
+			if (this.isWindows) {
+				return '1033'
+			} else {
+				return 'us(qwerty)'
+			}
+		} else if (layout === Layout.RU) {
+			if (this.isWindows) {
+				return '1049'
+			} else {
+				return 'ru'
+			}
+		}
+		return ''
+	}
 
 	private initialize(path: string) {
 
@@ -21,7 +43,7 @@ export default class MasterPlugin extends Plugin {
 			var codeMirror = this.getMarkdownCodeMirror(markdownView);
 			if (codeMirror) {
 				if (!codeMirror.state.vim.insertMode) {
-					this.switchToLayout(this.US_LAYOUT, false);
+					this.switchToLayout(Layout.US, false);
 				}
 				if (!this.registeredPaths.contains(path)) {
 					this.registeredPaths.push(path);
@@ -109,6 +131,9 @@ export default class MasterPlugin extends Plugin {
 	}
 
 	async onload() {
+
+		this.isWindows = os.type() == 'Windows_NT';
+
 		this.app.workspace.on('file-open', async (file) => {
 			this.initialize(file.path);
 		});
@@ -143,26 +168,62 @@ export default class MasterPlugin extends Plugin {
 		return this.app.workspace.getActiveViewOfType(ItemView);
 	}
 
-	switchToLayout(layout: string, saveOriginalLayout: boolean) {
+	switchToLayout(layout: Layout, saveOriginalLayout: boolean) {
+
 		const { exec } = require('child_process');
-		const switchFunction = () => {
-			exec(`xkb-switch -s '${layout}'`, (error: any) => {
-				if (error) {
-					console.error(error);
-				}
-			});
-		}
-		if (saveOriginalLayout) {
-			exec(`xkb-switch`, (error: any, standardOut: string) => {
-				if (error) {
-					console.error(error);
-					return;
-				}
-				this.originalLayout = standardOut.trim();
+
+		const layoutString = this.getLayoutString(layout);
+
+		if (this.isWindows) {
+			const switchFunction = () => {
+				exec(`im-select ${layoutString}`, (error: any) => {
+					if (error) {
+						console.error(error);
+					}
+				});
+			}
+			if (saveOriginalLayout) {
+				exec(`im-select`, (error: any, standardOut: string) => {
+					if (error) {
+						console.error(error);
+						return;
+					}
+					const layout = standardOut.trim();
+					if (layout == '1049') {
+						this.originalLayout = Layout.RU;
+					} else if (layout == '1033') {
+						this.originalLayout = Layout.US;
+					}
+					switchFunction();
+				});
+			} else {
 				switchFunction();
-			});
+			}
 		} else {
-			switchFunction();
+			const switchFunction = () => {
+				exec(`xkb-switch -s '${layoutString}'`, (error: any) => {
+					if (error) {
+						console.error(error);
+					}
+				});
+			}
+			if (saveOriginalLayout) {
+				exec(`xkb-switch`, (error: any, standardOut: string) => {
+					if (error) {
+						console.error(error);
+						return;
+					}
+					const layout = standardOut.trim();
+					if (layout == 'ru') {
+						this.originalLayout = Layout.RU;
+					} else if (layout == 'us(qwerty)') {
+						this.originalLayout = Layout.US;
+					}
+					switchFunction();
+				});
+			} else {
+				switchFunction();
+			}
 		}
 	}
 
@@ -170,17 +231,19 @@ export default class MasterPlugin extends Plugin {
 		if (modeObject.mode == 'insert') { // Switched to the insert mode. 
 			this.switchToLayout(this.originalLayout, false);
 		} else { // Switched to some other mode.
-			this.switchToLayout(this.US_LAYOUT, true);
+			this.switchToLayout(Layout.US, true);
 		}
 	}
 
 	switchToNormalMode() {
 		const { exec } = require('child_process');
-		exec(`xdotool key Escape`, (error: any) => {
-			if (error) {
-				console.error(error);
-			}
-		});
+		if (!this.isWindows) {
+			exec(`xdotool key Escape`, (error: any) => {
+				if (error) {
+					console.error(error);
+				}
+			});
+		}
 	}
 }
 

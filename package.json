@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-master-plugin",
 	"version": "0.0.1",
-    "description": "Obsidian customization plugin",
+	"description": "Obsidian customization plugin",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
