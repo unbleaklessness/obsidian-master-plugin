@@ -13,7 +13,7 @@ export default class MasterPlugin extends Plugin {
 	registeredPaths: string[] = [];
 	isWindows = false;
 
-	private getLayoutString(layout: Layout): string {
+	private layoutToString(layout: Layout): string {
 		if (layout === Layout.US) {
 			if (this.isWindows) {
 				return '1033'
@@ -30,7 +30,23 @@ export default class MasterPlugin extends Plugin {
 		return ''
 	}
 
-	private initialize(path: string) {
+	private stringToLayout(layout: string): Layout {
+		if (this.isWindows) {
+			if (layout == '1049') {
+				return Layout.RU;
+			} else if (layout == '1033') {
+				return Layout.US;
+			}
+		} else {
+			if (layout == 'ru') {
+				return Layout.RU;
+			} else if (layout == 'us(qwerty)') {
+				return Layout.US;
+			}
+		}
+	}
+
+	private setupLayoutSwitching(path: string) {
 
 		clearInterval(this.intervalID);
 
@@ -43,13 +59,13 @@ export default class MasterPlugin extends Plugin {
 			var codeMirror = this.getMarkdownCodeMirror(markdownView);
 			if (codeMirror) {
 				if (!codeMirror.state.vim.insertMode) {
-					this.switchToLayout(Layout.US, false);
+					this.setLayout(Layout.US, false);
 				}
 				if (!this.registeredPaths.contains(path)) {
 					this.registeredPaths.push(path);
 					codeMirror.on('vim-mode-change', (modeObject: any) => {
 						if (modeObject) {
-							this.onVimModeChanged(modeObject);
+							this.onVimModeChange(modeObject);
 						}
 					});
 				}
@@ -74,11 +90,11 @@ export default class MasterPlugin extends Plugin {
 					return;
 				}
 				if (!codeMirror.state.vim.insertMode) {
-					this.switchToLayout(this.US_LAYOUT, false);
+					this.setLayout(Layout.US, false);
 				}
 				codeMirror.on('vim-mode-change', (modeObject: any) => {
 					if (modeObject) {
-						this.onVimModeChanged(modeObject);
+						this.onVimModeChange(modeObject);
 					}
 				});
 				clearInterval(this.intervalID);
@@ -138,7 +154,7 @@ export default class MasterPlugin extends Plugin {
 		this.isWindows = os.type() == 'Windows_NT';
 
 		this.app.workspace.on('file-open', async (file) => {
-			this.initialize(file.path);
+			this.setupLayoutSwitching(file.path);
 		});
 
 		this.setupAutofocus();
@@ -171,70 +187,51 @@ export default class MasterPlugin extends Plugin {
 		return this.app.workspace.getActiveViewOfType(ItemView);
 	}
 
-	switchToLayout(layout: Layout, saveOriginalLayout: boolean) {
+	setLayout(layout: Layout, saveOriginalLayout: boolean) {
 
 		const { exec } = require('child_process');
 
-		const layoutString = this.getLayoutString(layout);
+		const layoutString = this.layoutToString(layout);
+
+		let setLayoutCommand = ''
+		let getLayoutCommand = ''
 
 		if (this.isWindows) {
-			const switchFunction = () => {
-				exec(`im-select ${layoutString}`, (error: any) => {
-					if (error) {
-						console.error(error);
-					}
-				});
-			}
-			if (saveOriginalLayout) {
-				exec(`im-select`, (error: any, standardOut: string) => {
-					if (error) {
-						console.error(error);
-						return;
-					}
-					const layout = standardOut.trim();
-					if (layout == '1049') {
-						this.originalLayout = Layout.RU;
-					} else if (layout == '1033') {
-						this.originalLayout = Layout.US;
-					}
-					switchFunction();
-				});
-			} else {
-				switchFunction();
-			}
+			setLayoutCommand = `im-select ${layoutString}`;
+			getLayoutCommand = `im-select`;
 		} else {
-			const switchFunction = () => {
-				exec(`xkb-switch -s '${layoutString}'`, (error: any) => {
-					if (error) {
-						console.error(error);
-					}
-				});
-			}
-			if (saveOriginalLayout) {
-				exec(`xkb-switch`, (error: any, standardOut: string) => {
-					if (error) {
-						console.error(error);
-						return;
-					}
-					const layout = standardOut.trim();
-					if (layout == 'ru') {
-						this.originalLayout = Layout.RU;
-					} else if (layout == 'us(qwerty)') {
-						this.originalLayout = Layout.US;
-					}
-					switchFunction();
-				});
-			} else {
-				switchFunction();
-			}
+			setLayoutCommand = `xkb-switch -s '${layoutString}'`;
+			getLayoutCommand = `xkb-switch`;
+		}
+
+		const setLayoutFunction = () => {
+			exec(setLayoutCommand, (error: any) => {
+				if (error) {
+					console.error(error);
+				}
+			});
+		}
+
+		if (saveOriginalLayout) {
+			exec(getLayoutCommand, (error: any, standardOut: string) => {
+				if (error) {
+					console.error(error);
+					return;
+				}
+				const layout = standardOut.trim();
+				this.originalLayout = this.stringToLayout(layout);
+			setLayoutFunction();
+			});
+		} else {
+			setLayoutFunction();
 		}
 	}
 
-	onVimModeChanged(modeObject: any) {
+	onVimModeChange(modeObject: any) {
 		if (modeObject.mode == 'insert') { // Switched to the insert mode. 
-			this.switchToLayout(this.originalLayout, false);
+			this.setLayout(this.originalLayout, false);
 		} else { // Switched to some other mode.
-			this.switchToLayout(Layout.US, true);
+			this.setLayout(Layout.US, true);
 		}
 	}
 
