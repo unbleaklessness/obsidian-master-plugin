@@ -66,6 +66,7 @@ export default class MasterPlugin extends Plugin {
 					});
 				}
 			}
+			return;
 		}
 
 		const itemView = this.getActiveItemView();
@@ -98,6 +99,7 @@ export default class MasterPlugin extends Plugin {
 				}
 				clearInterval(this.intervalID);
 			}, 100);
+			return;
 		}
 	}
 
