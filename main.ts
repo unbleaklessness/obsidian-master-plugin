@@ -10,7 +10,7 @@ export default class MasterPlugin extends Plugin {
 
 	originalLayout = Layout.US;
 	intervalID: any = null;
-	registeredPaths: string[] = [];
+	registeredCodeMirrors: CodeMirror.Editor[] = [];
 	isWindows = false;
 
 	private layoutToString(layout: Layout): string {
@@ -50,10 +50,6 @@ export default class MasterPlugin extends Plugin {
 
 		clearInterval(this.intervalID);
 
-		if (this.registeredPaths.contains(path)) {
-			return;
-		}
-
 		let markdownView = this.getActiveMarkdownView();
 		if (markdownView) {
 			var codeMirror = this.getMarkdownCodeMirror(markdownView);
@@ -61,8 +57,8 @@ export default class MasterPlugin extends Plugin {
 				if (!codeMirror.state.vim.insertMode) {
 					this.setLayout(Layout.US, false);
 				}
-				if (!this.registeredPaths.contains(path)) {
-					this.registeredPaths.push(path);
+				if (!this.registeredCodeMirrors.contains(codeMirror)) {
+					this.registeredCodeMirrors.push(codeMirror);
 					codeMirror.on('vim-mode-change', (modeObject: any) => {
 						if (modeObject) {
 							this.onVimModeChange(modeObject);
@@ -92,11 +88,14 @@ export default class MasterPlugin extends Plugin {
 				if (!codeMirror.state.vim.insertMode) {
 					this.setLayout(Layout.US, false);
 				}
-				codeMirror.on('vim-mode-change', (modeObject: any) => {
-					if (modeObject) {
-						this.onVimModeChange(modeObject);
-					}
-				});
+				if (!this.registeredCodeMirrors.contains(codeMirror)) {
+					this.registeredCodeMirrors.push(codeMirror);
+					codeMirror.on('vim-mode-change', (modeObject: any) => {
+						if (modeObject) {
+							this.onVimModeChange(modeObject);
+						}
+					});
+				}
 				clearInterval(this.intervalID);
 			}, 100);
 		}
@@ -220,7 +219,7 @@ export default class MasterPlugin extends Plugin {
 				}
 				const layout = standardOut.trim();
 				this.originalLayout = this.stringToLayout(layout);
-			setLayoutFunction();
+				setLayoutFunction();
 			});
 		} else {
 			setLayoutFunction();
