@@ -46,7 +46,7 @@ export default class MasterPlugin extends Plugin {
 		}
 	}
 
-	private setupLayoutSwitching(path: string) {
+	private setupLayoutSwitching() {
 
 		clearInterval(this.intervalID);
 
@@ -152,8 +152,8 @@ export default class MasterPlugin extends Plugin {
 
 		this.isWindows = os.type() == 'Windows_NT';
 
-		this.app.workspace.on('file-open', async (file) => {
-			this.setupLayoutSwitching(file.path);
+		this.app.workspace.on('file-open', async (_) => {
+			this.setupLayoutSwitching();
 		});
 
 		this.setupAutofocus();
