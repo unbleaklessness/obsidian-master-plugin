@@ -18,7 +18,7 @@ export default class MasterPlugin extends Plugin {
 			if (this.isWindows) {
 				return '1033'
 			} else {
-				return 'us(qwerty)'
+				return 'us'
 			}
 		} else if (layout === Layout.RU) {
 			if (this.isWindows) {
@@ -40,7 +40,7 @@ export default class MasterPlugin extends Plugin {
 		} else {
 			if (layout == 'ru') {
 				return Layout.RU;
-			} else if (layout == 'us(qwerty)') {
+			} else if (layout == 'us') {
 				return Layout.US;
 			}
 		}
