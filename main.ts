@@ -19,6 +19,7 @@ export default class MasterPlugin extends Plugin {
 	isWindows = false;
 	styleTag: HTMLStyleElement;
 	mode: Mode = Mode.Other;
+	previousMode: Mode = this.mode;
 
 	private layoutToString(layout: Layout): string {
 		if (layout === Layout.US) {
@@ -306,13 +307,14 @@ export default class MasterPlugin extends Plugin {
 	}
 
 	onVimModeChange(modeObject: any) {
-		if (modeObject.mode == 'insert') { // Switched to the insert mode. 
+		if (modeObject.mode == 'insert') {
 			this.mode = Mode.Insert;
 			this.setLayout(this.originalLayout, false);
-		} else { // Switched to some other mode.
+		} else if (this.previousMode != Mode.Other) {
 			this.mode = Mode.Other;
 			this.setLayout(Layout.US, true);
 		}
+		this.previousMode = this.mode;
 	}
 
 	switchToNormalMode() {
