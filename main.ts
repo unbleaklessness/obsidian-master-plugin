@@ -1,5 +1,12 @@
 import { Plugin, MarkdownView, ItemView } from 'obsidian';
 import * as os from 'os';
+import * as dgram from 'dgram';
+import { v4 as uuidv4 } from 'uuid';
+
+interface Message {
+	id: string,
+	filePath: string,
+}
 
 enum Layout {
 	US,
@@ -18,8 +25,14 @@ export default class MasterPlugin extends Plugin {
 	registeredCodeMirrors: CodeMirror.Editor[] = [];
 	isWindows = false;
 	styleTag: HTMLStyleElement;
+
 	mode: Mode = Mode.Other;
 	previousMode: Mode = this.mode;
+
+	socket: dgram.Socket;
+	readonly PORT = 6060;
+	readonly BROADCAST_ADDRESS = '255.255.255.255';
+	readonly ID = uuidv4();
 
 	private layoutToString(layout: Layout): string {
 		if (layout === Layout.US) {
@@ -217,7 +230,35 @@ export default class MasterPlugin extends Plugin {
 		}, 250);
 	}
 
+	private setupSocket() {
+
+		this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+
+		this.socket.bind(this.PORT, () => {
+			this.socket.setBroadcast(true);
+		});
+
+		this.socket.on('message', (buffer, _) => {
+			const object = JSON.parse(buffer.toString()) as Object;
+			if (!object.hasOwnProperty('id') || !object.hasOwnProperty('filePath')) {
+				return;
+			}
+			const message = object as Message;
+			if (message.id != this.ID) {
+				const files = this.app.vault.getFiles();
+				for (const file of files) {
+					if (file.path == message.filePath) {
+						this.app.workspace.getLeaf(false).openFile(file);
+						return;
+					}
+				}
+			}
+		});
+	}
+
 	async onload() {
+
+		this.setupSocket();
 
 		this.isWindows = os.type() == 'Windows_NT';
 
@@ -239,6 +280,24 @@ export default class MasterPlugin extends Plugin {
 			],
 			checkCallback: () => {
 				this.switchToNormalMode();
+			},
+		});
+
+		this.addCommand({
+			id: 'controlAltShiftO',
+			name: 'Control Alt Shift O',
+			hotkeys: [
+				{
+					modifiers: ['Mod', 'Alt', 'Shift'],
+					key: 'o',
+				},
+			],
+			checkCallback: () => {
+				const message = JSON.stringify({
+					id: this.ID,
+					filePath: this.app.workspace.getActiveFile().path,
+				});
+				this.socket.send(message, 0, message.length, this.PORT, this.BROADCAST_ADDRESS, console.error);
 			},
 		});
 
