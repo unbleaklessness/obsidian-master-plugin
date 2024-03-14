@@ -256,6 +256,18 @@ export default class MasterPlugin extends Plugin {
 		});
 	}
 
+	private getCurrentLine() {
+		let line = 1;
+		const view = this.getActiveMarkdownView();
+		if (view) {
+			const cursor = view.editor.getCursor();
+			if (cursor) { 
+				line = cursor.line + 1;
+			}
+		}
+		return line;
+	}
+
 	async onload() {
 
 		this.setupSocket();
@@ -296,6 +308,9 @@ export default class MasterPlugin extends Plugin {
 				const message = JSON.stringify({
 					id: this.ID,
 					filePath: this.app.workspace.getActiveFile().path,
+					openMode: "true",
+					line: this.getCurrentLine(),
+					viewMode: "live",
 				});
 				this.socket.send(message, 0, message.length, this.PORT, this.BROADCAST_ADDRESS, console.error);
 			},
