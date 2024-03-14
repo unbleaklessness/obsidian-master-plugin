@@ -316,6 +316,27 @@ export default class MasterPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({
+			id: 'controlAltShiftR',
+			name: 'Control Alt Shift R',
+			hotkeys: [
+				{
+					modifiers: ['Mod', 'Alt', 'Shift'],
+					key: 'r',
+				},
+			],
+			checkCallback: () => {
+				const message = JSON.stringify({
+					id: this.ID,
+					filePath: this.app.workspace.getActiveFile().path,
+					openMode: "false",
+					line: this.getCurrentLine(),
+					viewMode: "live",
+				});
+				this.socket.send(message, 0, message.length, this.PORT, this.BROADCAST_ADDRESS, console.error);
+			},
+		});
+
 		this.styleTag = document.createElement('style');
 		document.getElementsByTagName('head')[0].appendChild(this.styleTag);
 	}
