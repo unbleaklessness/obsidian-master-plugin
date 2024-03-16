@@ -312,7 +312,8 @@ export default class MasterPlugin extends Plugin {
 					line: this.getCurrentLine(),
 					viewMode: "live",
 				});
-				this.socket.send(message, 0, message.length, this.PORT, this.BROADCAST_ADDRESS, console.error);
+				const byteLength = Buffer.byteLength(message, 'utf-8');
+				this.socket.send(message, 0, byteLength, this.PORT, this.BROADCAST_ADDRESS, console.error);
 			},
 		});
 
